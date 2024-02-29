@@ -1,0 +1,13 @@
+---
+title: "DAS-Group-6 Analysis"
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    code-tools: true
+  pdf: default
+editor_options: 
+  chunk_output_type: console
+---
+
+## 
