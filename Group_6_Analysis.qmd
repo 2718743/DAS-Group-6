@@ -16,4 +16,8 @@ editor_options:
 
 # Exploratory Analysis
 
-# Formal Analysis 
+# Formal Analysis
+
+In this section, we will constructing an appropriate statistical model from the information gathered during the exploratory data analysis step and also examining relative differences to a baseline category.
+
+Firstly, we fitting the linear regression model that containing the explanatory variable and response variable as follows:
