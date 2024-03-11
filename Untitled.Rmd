@@ -1,0 +1,67 @@
+---
+title: "data analysis report"
+author: "Tingting Su"
+date: "2024-03-09"
+output: html_document
+---
+```{r}
+install.packages("GGally")
+library(GGally)
+
+data<-DAProject8
+
+
+#Has the body mass index (BMI) in Scotland changed over the given years of the Scottish Health Survey?
+
+attach(data)
+
+boxplot(BMI~Year)#subjective - no
+
+summary(lm(BMI~Year)) #objective - no, year non sig, 
+
+#Q2
+boxplot(BMI~AgeGroup) 
+summary(lm(BMI~AgeGroup))#Age sig inc
+
+
+
+boxplot(BMI~Sex) 
+summary(lm(BMI~Sex)) #Sex not sig
+
+
+boxplot(BMI~Employment) 
+summary(lm(BMI~Employment)) # Emp is sig
+
+
+boxplot(BMI~Veg) 
+summary(lm(BMI~Veg)) # sig
+
+boxplot(BMI~Fruit) 
+summary(lm(BMI~Fruit)) # Sig 
+
+FullMod<-lm(BMI~AgeGroup*Employment*Veg*Fruit)
+summary(FullMod)
+
+stepAIC(FullMod)
+
+
+Best<-lm(formula = BMI ~ AgeGroup + Employment + Veg + Fruit + AgeGroup:Veg + 
+    Employment:Fruit + Veg:Fruit)
+summary(Best) #R2=0.04821
+anova(Best)
+
+no.int<-lm(formula = BMI ~ AgeGroup + Employment + Veg + Fruit)
+anova(no.int)
+
+no.int.nf<-lm(formula = BMI ~ AgeGroup + Employment + Veg)
+summary(no.int.nf) #Adjusted R-squared:  0.04726 
+anova(no.int.nf)
+
+
+anova(Best, no.int.nf)
+
+anova(no.int.nf, Best)
+
+
+detach(data)
+```
