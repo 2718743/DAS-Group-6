@@ -1,0 +1,254 @@
+---
+title: " An In-depth Analysis of BMI Distribution Trends and Influencing Factors in Scotland from 2008 to 2012"
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    code-tools: true
+  pdf: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+library(ggplot2)
+library(tidyverse)
+library(gt)
+library(gridExtra)
+```
+
+# Introduction
+
+The Body Mass Index (BMI) serves as a fundamental metric in assessing the balance between an individual's height and weight, offering a critical window into public health. This project embarks on a statistical journey to dissect the distribution and determinants of BMI across Scotland over a five-year period, from 2008 to 2012. Utilizing data from the Scottish Health Surveys, we aim to uncover the trends and fluctuations in BMI and delve into how various socio-economic and lifestyle factors, such as age, gender, employment status, and daily consumption of fruits and vegetables, interplay in shaping these patterns.
+
+@sec-eda explores the BMI data from the Scottish Health Surveys, focusing on how BMI varies by age, gender, employment, and diet as well as looking at how BMI has changed over the length of the study. We’ll look for trends and differences across these groups. @sec-fda breaks down the results from a regression model that predicts BMI based on these factors and checks if our model holds up statistically. The final remarks, where we wrap up our findings and talk about their impact, are in @sec-con.
+
+# Exploratory Analysis {#sec-eda}
+
+```{r}
+#| echo: false
+data <- read.csv("DAProject8.csv")
+
+data$Sex <- as.factor(data$Sex)
+data$Employment<- as.factor(data$Employment)
+data$Veg <- as.factor(data$Veg)
+data$Fruit <- as.factor(data$Fruit)
+data$Year <- as.numeric(data$Year)
+data$AgeGroup <- as.factor(data$AgeGroup)
+
+data[data$Veg == "Yes" & data$Fruit == "Yes", "Lifestyle"] <- "Both"
+data[data$Veg == "Yes" & data$Fruit == "No", "Lifestyle"] <- "Just Veg"
+data[data$Veg == "No" & data$Fruit == "Yes", "Lifestyle"] <- "Just Fruit"
+data[data$Veg == "No" & data$Fruit == "No", "Lifestyle"] <- "None"
+
+data$Lifestyle <- factor(data$Lifestyle, levels = c("Both", "Just Veg",
+                                                    "Just Fruit", "None"))
+```
+
+@tbl-1 displays the summary statistics for BMI by year. We can see that both the mean and median BMI is very consistent in each year,with the highest average BMI being in 2010 and the lowest in 2009. The variability given by the standard deviation also very similar in every year.
+
+```{r}
+#| echo: false
+#| label: tbl-1
+#| tbl-cap:  Summary statistics of BMI by Year.
+
+data |>
+  summarize(mean = mean(BMI),
+            sd = sd(BMI),
+            min = fivenum(BMI)[1],
+            Q1 = fivenum(BMI)[2],
+            median = fivenum(BMI)[3],
+            Q3 = fivenum(BMI)[4],
+            max = fivenum(BMI)[5],
+            .by=Year)|>
+  gt() |> 
+  cols_label(
+    mean = html("Mean"),
+    min = html("Min"),
+    Q1 = html("Q1"),
+    median = html("Median"),
+    Q3 = html("Q3"),
+    max = html("max")
+  )
+```
+
+@fig-boxpl1 shows the similarity in the distributions of BMI by year.
+
+```{r}
+#| echo: false
+#| label: fig-boxpl1
+#| fig-cap: Boxplot of BMI by Year.
+
+ggplot(data, aes(x = as.factor(Year), y = BMI,fill=as.factor(Year))) +
+  geom_boxplot() +
+  labs(title = "BMI by year", x = "Year", y = "BMI")+
+  theme(legend.position = "none")
+```
+From @tbl-2 we can see that males have slightly higher mean BMI (27.87) than females (27.76) but this does not appear substantial. We do see that females BMI has higher variability given by a standard deviation of 5.77 compared to only 4.55 for males, indicating that BMI values for females is more spread out than males. 
+```{r}
+#| echo: false
+#| label: tbl-2
+#| tbl-cap:  Summary statistics of BMI by Sex.
+
+data |>
+  summarize(mean = mean(BMI),
+            sd = sd(BMI),
+            min = fivenum(BMI)[1],
+            Q1 = fivenum(BMI)[2],
+            median = fivenum(BMI)[3],
+            Q3 = fivenum(BMI)[4],
+            max = fivenum(BMI)[5],
+            .by=Sex)|>
+  gt() |> 
+  cols_label(
+    mean = html("Mean"),
+    min = html("Min"),
+    Q1 = html("Q1"),
+    median = html("Median"),
+    Q3 = html("Q3"),
+    max = html("max")
+  )
+```
+
+@tbl-3 displays the summary statistics for different age groups, it shows a consistent median range from the mid to high 20s, suggesting a similar central tendency across the population. Notably, the 16-24 age group has a slightly lower mean BMI, whereas the 65-74 and 55-64 age groups report higher mean values. The standard deviation across all groups indicates a comparable level of variation, with the youngest age group showing the highest spread. The minimum BMI values highlight extreme cases, particularly low 25-34 age groups.
+```{r}
+#| echo: false
+#| label: tbl-3
+#| tbl-cap:  Summary statistics of BMI by Age Group.
+
+data |>
+  summarize(mean = mean(BMI),
+            sd = sd(BMI),
+            min = fivenum(BMI)[1],
+            Q1 = fivenum(BMI)[2],
+            median = fivenum(BMI)[3],
+            Q3 = fivenum(BMI)[4],
+            max = fivenum(BMI)[5],
+            .by=AgeGroup)|>
+  gt() |> 
+  cols_label(
+    mean = html("Mean"),
+    min = html("Min"),
+    Q1 = html("Q1"),
+    median = html("Median"),
+    Q3 = html("Q3"),
+    max = html("max")
+  )
+```
+
+
+@fig-boxpl2 shows us the boxplots for different age groups(right) and by sex(left). We can see that the distribution of BMI of males and females are very similar, the higher variability is shown by the plot for females. We can also see that females have more extreme outliers than males, this is indicated by the dots beyond the whiskers. In the BMI by age group boxplot(right), the median BMI seems to increase with age, particularly noticeable after the 35-44 age group. The 65-74 age group shows a higher median BMI compared to younger groups, with a slight decrease for those 75+. Notably, there is a wide range of BMI values across all age groups, as evidenced by the spread of the data points and the presence of outliers in each category, reflecting diverse body compositions within each age segment.
+```{r}
+#| echo: false
+#| label: fig-boxpl2
+#| fig-cap: Boxplot of BMI by Sex(left) and by Age Group(right).
+
+p1<- ggplot(data, aes(x = Sex, y = BMI)) +
+  geom_boxplot(fill=c("pink","lightblue")) +
+  labs(title = "BMI by Sex", x = "Sex", y = "BMI")
+p2<-ggplot(data, aes(x = AgeGroup, y = BMI, fill = AgeGroup)) +
+  geom_boxplot() +
+  labs(title = "BMI by Age Group", x = "Age Group", y = "BMI") +
+  scale_x_discrete(labels=c("16-24","25-34","35-44","45-54",
+                            "55-64","65-74","75+"))+
+  theme(legend.position ="none")
+
+grid.arrange(p1,p2,ncol=2)
+```
+
+@tbl-4, the summary statistics of BMI by Employment type revealed that retired individuals and those unable to work have the highest average BMI, with means above 28, which is approaching the threshold for obesity. In contrast, those in full-time education have the lowest average BMI, considerably lower than the other groups, and also exhibit the least variability. Individuals who are employed, looking after home/family, or doing something else show average BMIs in the mid-27s, indicating a fairly consistent pattern across these employment categories. Notably, all groups except those in full-time education show potential instances of extreme obesity, as indicated by maximum BMI values exceeding 50.
+
+```{r}
+#| echo: false
+#| label: tbl-4
+#| tbl-cap:  Summary statistics of BMI by Employment.
+
+data |>
+  summarize(mean = mean(BMI),
+            sd = sd(BMI),
+            min = fivenum(BMI)[1],
+            Q1 = fivenum(BMI)[2],
+            median = fivenum(BMI)[3],
+            Q3 = fivenum(BMI)[4],
+            max = fivenum(BMI)[5],
+            .by=Employment)|>
+  gt() |> 
+  cols_label(
+    mean = html("Mean"),
+    min = html("Min"),
+    Q1 = html("Q1"),
+    median = html("Median"),
+    Q3 = html("Q3"),
+    max = html("max")
+  )
+```
+
+From @tbl-5 we can see that people who consume the daily recommeded intake of only fruit tend to have a higher BMI compared to the other categories which tend to be quite similar. However we can see that the category of people who do not consume the daily recommended intake of fruit or veg have a higher BMI than the rest.
+
+```{r}
+#| echo: false
+#| label: tbl-5
+#| tbl-cap:  Summary statistics of BMI by Lifestyle.
+
+data |>
+  summarize(mean = mean(BMI),
+            sd = sd(BMI),
+            min = fivenum(BMI)[1],
+            Q1 = fivenum(BMI)[2],
+            median = fivenum(BMI)[3],
+            Q3 = fivenum(BMI)[4],
+            max = fivenum(BMI)[5],
+            .by=Lifestyle)|>
+  gt() |> 
+  cols_label(
+    mean = html("Mean"),
+    min = html("Min"),
+    Q1 = html("Q1"),
+    median = html("Median"),
+    Q3 = html("Q3"),
+    max = html("max")
+  )
+```
+
+@fig-boxpl3 shows the BMI distributions by Employment type(left) and by Lifestyle (right) which is categorised into whether the person consumes the daily recommended fruit/veg or both.
+
+The boxplot for BMI by employment status reveals notable variance in body mass index across different work-life situations, with retired individuals having the highest median BMI and the most variability, while those in full-time education show significantly lower median BMI values and less spread. Each category has outliers, particularly in the higher BMI ranges, indicating that while the central tendencies differ, there are individuals with high BMI in all employment statuses. We can see that from the boxplots on the right the distributions of BMI by lifestyle are almost identical.
+```{r}
+#| echo: false
+#| label: fig-boxpl3
+#| fig-cap: Boxplot of BMI by Employment(left) and Lifestyle(right).
+
+p3<- ggplot(data, aes(x = Employment, y = BMI, fill= Employment))+
+  geom_boxplot()+
+  labs(title= "BMI by Employment", x="Employment")+
+  scale_x_discrete(labels=c("Something else",
+                            "Full-time Education",
+                            "Paid/self employment or gov't training",
+                            "Looking after home/family",
+                            "Looking for work",
+                            "Unable to work",
+                            "Retired"))+
+  theme(legend.position = "none",axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+
+p4 <-ggplot(data, aes(x = Lifestyle, y = BMI, fill= Lifestyle))+
+  geom_boxplot()+
+  labs(title= "BMI by Lifestyle", x="Lifestyle")+
+  theme(legend.position = "none")
+
+grid.arrange(p3,p4,ncol=2)
+```
+
+```{r}
+
+```
+
+# Formal Analysis {#sec-fda}
+
+In this section, we will constructing an appropriate statistical model from the information gathered during the exploratory data analysis step and also examining relative differences to a baseline category.
+
+Firstly, we fitting the linear regression model that containing the explanatory variable and response variable as follows:
+
+# Conclusions {#sec-con}
