@@ -120,14 +120,14 @@ data |>
 #| tbl-cap:  Summary statistics of BMI by Age Group.
 
 data |>
+  group_by(AgeGroup)|>
   summarize(mean = mean(BMI),
             sd = sd(BMI),
             min = fivenum(BMI)[1],
             Q1 = fivenum(BMI)[2],
             median = fivenum(BMI)[3],
             Q3 = fivenum(BMI)[4],
-            max = fivenum(BMI)[5],
-            .by=AgeGroup)|>
+            max = fivenum(BMI)[5])|>
   gt() |> 
   cols_label(
     mean = html("Mean"),
