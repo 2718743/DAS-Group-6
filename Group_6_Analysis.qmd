@@ -248,9 +248,7 @@ p4 <-ggplot(data, aes(x = Lifestyle, y = BMI, fill= Lifestyle))+
 grid.arrange(p3,p4,ncol=2)
 ```
 
-```{r}
 
-```
 
 # Formal Analysis {#sec-fda}
 
@@ -313,11 +311,11 @@ full_model <- lm(BMI ~ AgeGroup+ Sex +
 reduced_model <- stepAIC(full_model, direction = "backward")
 ```
 
-After obtaining the reduced model we can obtain the regression coefficents of the significant terms from the regression table, @tab-6.
+After obtaining the reduced model we can obtain the regression coefficents of the significant terms from the regression table, @tab-7.
 
 ```{r}
 #| echo: false
-#| label: tbl-6
+#| label: tbl-7
 #| tbl-cap: Regression table of reduced model.
 
 get_regression_table(reduced_model) |>
@@ -329,11 +327,27 @@ get_regression_table(reduced_model) |>
 
 Therefore our final model with only significant variables and factors is:
 
-$$\begin{aligned}
-\widehat{\mbox{BMI}} = 24.71 + 1.18 \cdot \mathbb{I}_{\mbox{AgeGroup: 25-34}}(x) + 2.5 \cdot \mathbb{I}_{\mbox{AgeGroup: 35-44}}(x) + 2.77\cdot \mathbb{I}_{\mbox{AgeGroup: 45-54}}(x)  + \\
-3.28 \cdot \mathbb{I}_{\mbox{AgeGroup: 55-64}}(x) + 3.2\cdot \mathbb{I}_{\mbox{AgeGroup: 65-74}}(x) + 2.34 \cdot \mathbb{I}_{\mbox{AgeGroup: 75+}}(x) \\ -0.87 \cdot \mathbb{I}_{\mbox{Employment: In full-time education}}(x)\\ +0.66\cdot \mathbb{I}_{\mbox{Employment: In paid employment, self-employed or on gov't training}}(x)\\ + 1.18\cdot \mathbb{I}_{\mbox{Employment: Perm unable to work}}(x)
-+0.6\cdot \mathbb{I}_{\mbox{Lifestyle: Just Fruit}}(x) + 0.28\cdot \mathbb{I}_{\mbox{Lifestyle: None}}(x)
-\end{aligned}$$
+
+\begin{aligned}
+\widehat{\text{BMI}} = & \; 24.71 \\
+& + 1.18 \cdot \mathbb{1}_{\text{AgeGroup: 25-34}}(x) \\
+& + 2.50 \cdot \mathbb{1}_{\text{AgeGroup: 35-44}}(x) \\
+& + 2.77 \cdot \mathbb{1}_{\text{AgeGroup: 45-54}}(x) \\
+& + 3.28 \cdot \mathbb{1}_{\text{AgeGroup: 55-64}}(x) \\
+& + 3.20 \cdot \mathbb{1}_{\text{AgeGroup: 65-74}}(x) \\
+& + 2.34 \cdot \mathbb{1}_{\text{AgeGroup: 75+}}(x) \\
+& - 0.87 \cdot \mathbb{1}_{\text{Employment: In full-time education}}(x) \\
+& + 0.66 \cdot \mathbb{1}_{\text{Employment: In paid employment, self-employed or on gov't training}}(x) \\
+& + 1.18 \cdot \mathbb{1}_{\text{Employment: Perm unable to work}}(x) \\
+& + 0.60 \cdot \mathbb{1}_{\text{Lifestyle: Just Fruit}}(x) \\
+& + 0.28 \cdot \mathbb{1}_{\text{Lifestyle: None}}(x)
+\end{aligned}
+
+
+where 
+
+-   $\mathbb{I}_{\mbox{factor}}(x)$ is an indicator function indicating whether an individual meets the description of this factor.
+
 
 So to answer our original question; whether there any differences in the BMI distribution by age, gender, socio-economic status or lifestyle factors? We can see that BMI differs for age Group of a person, 3 different socio-economic factors and whether the person only eats fruit or does not eat both fruit and veg. assumption 
 
