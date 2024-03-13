@@ -1,0 +1,123 @@
+---
+title: "DAS-Group-6 Analysis"
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    code-tools: true
+  pdf: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| warning: false
+#| message: false 
+#| echo: false 
+library(ggplot2) 
+library(tidyverse) 
+library(gt) 
+library(MASS) 
+library(patchwork) 
+library(moderndive) 
+library(skimr) 
+library(gt)
+library(dplyr)
+library(gridExtra)
+library(readr)
+library(gridExtra)
+```
+
+```{r}
+#| warning: false
+#| message: false 
+#| echo: false 
+pj6.data<-read_csv("~/Desktop/data analysis groupwork/DAProject8.csv")
+```
+
+# Formal Analysis {#sec-fas}
+
+In our forthcoming formal analysis, we delve into understanding the variations in BMI, specifically examining the roles of age, gender, socio-economic status, and lifestyle factors. To achieve this, we employ the Akaike Information Criterion (AIC) via the **`stepAIC`** function, an essential tool for model selection. AIC aids in comparing the fitness of statistical models while accounting for their complexity, favoring models that strike an optimal balance between simplicity and explanatory power. A model with a lower AIC value is preferred, as it indicates efficiency in describing the data with minimal complexity. Through this approach, we aim to refine our model to be both robust and parsimonious, ensuring that our conclusions are not only statistically significant but also of practical significance. This methodology allows us to identify the most influential predictors on BMI, providing insights that are grounded in a rigorous analytical framework.
+
+```{r}
+
+FullMod<-lm(BMI~AgeGroup+Sex+Employment+Veg+Fruit,pj6.data)
+
+# Use stepAIC and capture the output
+step_model <- stepAIC(FullMod, trace = FALSE)
+
+# Perform stepwise model selection based on AIC, showing steps
+step_model <- stepAIC(FullMod, direction = "both", trace = TRUE)
+summary(step_model)
+
+
+```
+
+\
+The outcome of the stepwise selection process reveals that the model with the lowest Akaike Information Criterion (AIC) value, which is 82517.56, is the one that includes 'AgeGroup', 'Employment', and 'Veg' as predictors. This indicates that among the variables considered, these three are the most significant in explaining the variation in Body Mass Index (BMI) across the dataset. following the best model should be
+
+*`BMI ~ AgeGroup + Employment + Veg`*
+
+Now we fitting the linear regression model based on the previous AIC checking that containing the explanatory variable and response variable as follows:
+
+$$
+BMI_{i} = \alpha + \beta_1 \cdot AgeGroup_{i} + \beta_2 \cdot Employment_{i} + \beta_3 \cdot Veg_{i} + \epsilon_{i}, ,~~~~ \epsilon_i \sim N(0, \sigma^2), ~~~~ i=1,\ldots,25224\nonumber
+$$
+
+where,
+
+\-$BMI_{i}$ is the body mass index for the $i^{th}$ individual.
+
+\-$\alpha$ is the intercept, representing the expected value of BMI when all predictors are at their baseline levels.
+
+\-$\beta_{1}$, $\beta_{2}$, and $\beta_{3}$ are the coefficients for the effects of $AgeGroup$, $Employment$, and $Veg$ on BMI, respectively.
+
+\-$AgeGroup_{i}$ is a categorical variable indicating the age group of the $i^{th}$ individual, and it's treated as a set of dummy variables in the model.
+
+\-$Employment_{i}$ represents the employment status of the $i^{th}$ individual, also treated as a set of dummy variables.
+
+\-$Veg_{i}$ is a binary indicator of whether the $i^{th}$ individual meets a certain threshold of vegetable consumption.
+
+\-$\epsilon_{i}$ is the error term for the $i^{th}$ individual, assumed to follow a normal distribution with mean 0 and variance $\sigma^{2}$.
+
+\-$25224$ is the total number of individuals in the dataset.
+
+The regression coefficients from the model are displayed in Model are display in @tbl-regtable
+
+```{r}
+#| echo: false
+#| label: tbl-regtable
+#| tbl-cap: Estimates of the regression model coefficients.
+get_regression_table(step_model)[, c(1, 2, 5)] |>
+  gt() |> 
+  fmt_number(decimals=2) |>
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_column_labels())
+```
+
+```{r}
+# Assuming your model is stored in a variable called `model`
+model <- lm(BMI ~ AgeGroup + Employment + Veg, data = data)
+
+# 1. Linearity and Homoscedasticity: Plotting residuals vs. fitted values
+plot(model$fitted.values, resid(model), xlab = "Fitted values", ylab = "Residuals")
+abline(h = 0, col = "red")
+
+# Adding title for clarity
+title(main = "Residuals vs. Fitted")
+
+# 2. Normality of Residuals: QQ plot of residuals
+qqnorm(resid(model))
+qqline(resid(model), col = "red")
+
+# Adding title for clarity
+title(main = "Normal Q-Q Plot of Residuals")
+
+# 3. Independence: Durbin-Watson test
+library(lmtest)
+dwtest(model)
+
+# 4. Homoscedasticity: Breusch-Pagan test
+bptest(model)
+
+```
