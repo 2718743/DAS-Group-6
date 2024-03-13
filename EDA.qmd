@@ -18,6 +18,7 @@ library(ggplot2)
 library(tidyverse)
 library(gt)
 library(gridExtra)
+library(moderndive)
 ```
 
 # Introduction
@@ -36,7 +37,7 @@ data$Sex <- as.factor(data$Sex)
 data$Employment<- as.factor(data$Employment)
 data$Veg <- as.factor(data$Veg)
 data$Fruit <- as.factor(data$Fruit)
-data$Year <- as.numeric(data$Year)
+data$Year <- as.factor(data$Year)
 data$AgeGroup <- as.factor(data$AgeGroup)
 
 data[data$Veg == "Yes" & data$Fruit == "Yes", "Lifestyle"] <- "Both"
@@ -87,7 +88,9 @@ ggplot(data, aes(x = as.factor(Year), y = BMI,fill=as.factor(Year))) +
   labs(title = "BMI by year", x = "Year", y = "BMI")+
   theme(legend.position = "none")
 ```
-From @tbl-2 we can see that males have slightly higher mean BMI (27.87) than females (27.76) but this does not appear substantial. We do see that females BMI has higher variability given by a standard deviation of 5.77 compared to only 4.55 for males, indicating that BMI values for females is more spread out than males. 
+
+From @tbl-2 we can see that males have slightly higher mean BMI (27.87) than females (27.76) but this does not appear substantial. We do see that females BMI has higher variability given by a standard deviation of 5.77 compared to only 4.55 for males, indicating that BMI values for females is more spread out than males.
+
 ```{r}
 #| echo: false
 #| label: tbl-2
@@ -114,6 +117,7 @@ data |>
 ```
 
 @tbl-3 displays the summary statistics for different age groups, it shows a consistent median range from the mid to high 20s, suggesting a similar central tendency across the population. Notably, the 16-24 age group has a slightly lower mean BMI, whereas the 65-74 and 55-64 age groups report higher mean values. The standard deviation across all groups indicates a comparable level of variation, with the youngest age group showing the highest spread. The minimum BMI values highlight extreme cases, particularly low 25-34 age groups.
+
 ```{r}
 #| echo: false
 #| label: tbl-3
@@ -139,8 +143,8 @@ data |>
   )
 ```
 
-
 @fig-boxpl2 shows us the boxplots for different age groups(right) and by sex(left). We can see that the distribution of BMI of males and females are very similar, the higher variability is shown by the plot for females. We can also see that females have more extreme outliers than males, this is indicated by the dots beyond the whiskers. In the BMI by age group boxplot(right), the median BMI seems to increase with age, particularly noticeable after the 35-44 age group. The 65-74 age group shows a higher median BMI compared to younger groups, with a slight decrease for those 75+. Notably, there is a wide range of BMI values across all age groups, as evidenced by the spread of the data points and the presence of outliers in each category, reflecting diverse body compositions within each age segment.
+
 ```{r}
 #| echo: false
 #| label: fig-boxpl2
@@ -216,6 +220,7 @@ data |>
 @fig-boxpl3 shows the BMI distributions by Employment type(left) and by Lifestyle (right) which is categorised into whether the person consumes the daily recommended fruit/veg or both.
 
 The boxplot for BMI by employment status reveals notable variance in body mass index across different work-life situations, with retired individuals having the highest median BMI and the most variability, while those in full-time education show significantly lower median BMI values and less spread. Each category has outliers, particularly in the higher BMI ranges, indicating that while the central tendencies differ, there are individuals with high BMI in all employment statuses. We can see that from the boxplots on the right the distributions of BMI by lifestyle are almost identical.
+
 ```{r}
 #| echo: false
 #| label: fig-boxpl3
@@ -247,8 +252,57 @@ grid.arrange(p3,p4,ncol=2)
 
 # Formal Analysis {#sec-fda}
 
-In this section, we will constructing an appropriate statistical model from the information gathered during the exploratory data analysis step and also examining relative differences to a baseline category.
+We start our statistical analysis on the 2008 - 2012 Scottish Health Surveys data set by fitting a linear model of the average BMI against the year to see if there is a significant change of BMI over the given years. Below is the linear model we are fitting:
 
-Firstly, we fitting the linear regression model that containing the explanatory variable and response variable as follows:
+$$\begin{aligned}
+y_{i} &= \alpha + \beta_1 \cdot x_{1i} + \beta_2 \cdot x_{2i} + \beta_3 \cdot x_{3i}  + \beta_4 \cdot x_{4i}  + \epsilon_i, ~~~~ \epsilon_i \sim N(0, \sigma^2), ~~~~ i=1,\ldots,25224 \nonumber \\
+&= \alpha + \beta_{\mbox{2009}} \cdot \mathbb{I}_{\mbox{2009}}(x) + \beta_{\mbox{2010}} \cdot \mathbb{I}_{\mbox{2010}}(x) + \beta_{\mbox{2011}} \cdot \mathbb{I}_{\mbox{2011}}(x)  +
+\beta_{\mbox{2012}} \cdot \mathbb{I}_{\mbox{2012}}(x) +
+\epsilon_i, \nonumber
+\end{aligned}$$
+
+-   $\alpha$ is the intercept of the regression line for the baseline year (2009);
+-   $\beta_{\mbox{year}}$ is the additional term added to $\alpha$ to get the intercept of the regression line for the specified year;
+-   $\mathbb{I}_{\mbox{year}}(x)$ is an indicator function indicating the chosen year.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+year_model <- lm(BMI ~ Year, data = data)
+```
+
+This model obtains the following regression table; @tbl-reg. Here we can see that all the $\beta_{\mbox{year}}$ p values are greater than 0.05, our chosen significance level. This suggest that all $\beta_{\mbox{year}}$ terms are not significant and we fail to reject the null hypothesis that the average BMI in Scotland has not changed over the given years. Thus we should fit the null model, that is the model with an intercept term only
+
+```{r}
+#| echo: false
+#| label: tbl-reg
+#| tbl-cap: Estimates of the regression model coefficients.
+get_regression_table(year_model) |>
+  gt() |>
+  fmt_number(decimals=2) |>
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_column_labels())
+```
+After fitting the null model, we can plot the histogram of residuals to check the assumption of normally distributed residuals with mean 0, as seen in @fig-resd. We can see a fairly normal bell shaped curve centered at 0, however there is a slight right skew but this does not seem significant to invalidate the assumption of normality.As this is a model with no predictors it is not informative to check the Homoscedasticity assumption. Thus the null model for BMI plotted against years seems appropriate. 
+
+```{r}
+#| echo: false
+#| label: fig-resd
+#| fig-cap: Histogram of residuals
+null_model <- lm(BMI ~ 1, data=data)
+reg_points <-get_regression_points(null_model)
+
+ggplot(reg_points,aes(x=residual))+
+         geom_histogram(bins = 30, col="white")+
+  labs(x="Residuals")
+```
+
+#question2
+
+```{r}
+
+```
 
 # Conclusions {#sec-con}
