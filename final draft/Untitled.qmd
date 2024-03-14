@@ -33,7 +33,7 @@ The Body Mass Index (BMI) serves as a fundamental metric in assessing the balanc
 
 ```{r}
 #| echo: false
-data <- read.csv("~/Desktop/data analysis groupwork/DAProject8.csv")
+data <- read.csv("DAProject8.csv")
 
 data$Sex <- as.factor(data$Sex)
 data$Employment<- as.factor(data$Employment)
