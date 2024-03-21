@@ -1,0 +1,284 @@
+---
+title: " An In-depth Analysis of BMI Distribution Trends and Influencing Factors in Scotland from 2008 to 2012"
+number-sections: true
+format: html
+editor: visual
+---
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+library(ggplot2)
+library(tidyverse)
+library(gt)
+library(gridExtra)
+library(moderndive)
+library(MASS)
+library(knitr)
+library(tinytex)
+```
+
+## Introduction
+
+The Body Mass Index (BMI) plays a significant role in evaluating the balance between a person's height and weight, which provides a pivotal point in the area of public health. This report is mainly focused on an exploration into the distribution and elements of BMI within Scotland, from 2008 to 2012. By analysing data derived from the Scottish Health Surveys, we aim to elucidate the trends and variances in BMI, while assessing the interaction of various socio-economics and lifestyle factors, such as age, gender, employment status, and daily consumption of fruits and vegetables.
+
+@sec-eda begin with inspecting whether the body mass index (BMI) in Scotland has changed from 2008 to 2012 in the Scottish Health Survey and emphasizing how BMI varies by age, gender, employment, and dietary habits, in addition to examining the trends of BMI over the duration of the study. This section seeks to identify trends and differences among the groups. @sec-fda discusses the outcomes of a regression analysis which predicts BMI based on these determinants, assessing the statistical significance of our models. The final remarks, presented in @sec-con, give our findings and discussion about their future impact.
+
+## Exploratory Analysis {#sec-eda}
+
+```{r}
+#| echo: false
+data <- read.csv("~/Desktop/data analysis groupwork/DAProject8.csv")
+
+data$Sex <- as.factor(data$Sex)
+data$Employment<- as.factor(data$Employment)
+data$Veg <- as.factor(data$Veg)
+data$Fruit <- as.factor(data$Fruit)
+data$Year <- as.factor(data$Year)
+data$AgeGroup <- as.factor(data$AgeGroup)
+
+data[data$Veg == "Yes" & data$Fruit == "Yes", "Lifestyle"] <- "Both"
+data[data$Veg == "Yes" & data$Fruit == "No", "Lifestyle"] <- "Just Veg"
+data[data$Veg == "No" & data$Fruit == "Yes", "Lifestyle"] <- "Just Fruit"
+data[data$Veg == "No" & data$Fruit == "No", "Lifestyle"] <- "None"
+
+data$Lifestyle <- factor(data$Lifestyle, levels = c("Both", "Just Veg",
+                                                    "Just Fruit", "None"))
+```
+
+@tbl-Years displays the summary statistics for BMI by year. We can see that both the mean and median BMI is very consistent in each year,with the highest average BMI being in 2010 and the lowest in 2009. The variability given by the standard deviation also very similar in every year.
+
+```{r}
+#| echo: false
+#| label: tbl-Years
+#| tbl-cap:  Summary statistics of BMI by Year.
+#| warning: false
+
+data |>
+  summarize(mean = mean(BMI),
+            sd = sd(BMI),
+            min = fivenum(BMI)[1],
+            Q1 = fivenum(BMI)[2],
+            median = fivenum(BMI)[3],
+            Q3 = fivenum(BMI)[4],
+            max = fivenum(BMI)[5],
+            .by=Year)|>
+  gt() |> 
+  cols_label(
+    mean = html("Mean"),
+    min = html("Min"),
+    Q1 = html("Q1"),
+    median = html("Median"),
+    Q3 = html("Q3"),
+    max = html("max")
+  )|>
+    fmt_number( columns = vars(mean, sd, min, Q1, median, Q3, max), decimals = 3)
+```
+
+@fig-boxpl2 shows us the boxplots for different age groups(right) and by sex(left). We can see the distribution of BMI of males and females are very similar, the higher variability is shown by the plot for females. We can also see females have more extreme outliers than males, this is indicated by the dots beyond the whiskers. In the BMI by age group boxplot(right), the median BMI seems to increase with age, particularly noticeable after the 35-44 age group. The 65-74 age group shows a higher median BMI compared to younger groups, with a slight decrease for those 75+. Notably, there is a wide range of BMI values across all age groups, as evidenced by the spread of the data points and the presence of outliers in each category, reflecting diverse body compositions within each age segment.
+
+```{r}
+#| echo: false
+#| label: fig-boxpl2
+#| fig-cap: Boxplot of BMI by Sex(left) and by Age Group(right).
+#| fig-width: 6
+#| fig-height: 2
+
+p1<- ggplot(data, aes(x = Sex, y = BMI)) +
+  geom_boxplot(fill=c("pink","lightblue")) +
+  labs(title = "BMI by Sex", x = "Sex", y = "BMI")
+p2<-ggplot(data, aes(x = AgeGroup, y = BMI, fill = AgeGroup)) +
+  geom_boxplot() +
+  labs(title = "BMI by Age Group", x = "Age Group", y = "BMI") +
+  scale_x_discrete(labels=c("16-24","25-34","35-44","45-54",
+                            "55-64","65-74","75+"))+
+  theme(legend.position ="none")
+
+grid.arrange(p1,p2,ncol=2)
+```
+
+@fig-boxpl3 shows the BMI distributions by Employment type(left) and by Lifestyle (right) which is categorised into whether the person consumes the daily recommended fruit/veg or both. The boxplot for BMI by employment status reveals notable variance in body mass index across different work-life situations, with retired individuals having the highest median BMI and the most variability, while those in full-time education show significantly lower median BMI values and less spread. Each category has outliers, particularly in the higher BMI ranges, indicating while the central tendencies differ, there are individuals with high BMI in all employment statuses. We can see from the boxplots on the right the distributions of BMI by lifestyle are almost identical.
+
+```{r}
+#| echo: false
+#| label: fig-boxpl3
+#| fig-cap: Boxplot of BMI by Employment(left) and Lifestyle(right).
+
+
+p3<- ggplot(data, aes(x = Employment, y = BMI, fill= Employment))+
+  geom_boxplot()+
+  labs(title= "BMI by Employment", x="Employment")+
+  scale_x_discrete(labels=c("Something else",
+                            "Full-time Education",
+                            "Paid/self employment or gov't training",
+                            "Looking after home/family",
+                            "Looking for work",
+                            "Unable to work",
+                            "Retired"))+
+  theme(legend.position = "none",axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1))
+
+p4 <-ggplot(data, aes(x = Lifestyle, y = BMI, fill= Lifestyle))+
+  geom_boxplot()+
+  labs(title= "BMI by Lifestyle", x="Lifestyle")+
+  theme(legend.position = "none")
+
+grid.arrange(p3,p4,ncol=2)
+```
+
+## Formal Analysis {#sec-fda}
+
+### changes in Body Mass Index (BMI) in Scotland over the years {#sec-fay}
+
+We start our statistical analysis on the 2008 - 2012 Scottish Health Surveys data set by fitting a linear model of the average BMI against the year to see if there is a significant change of BMI over the given years. Below is the linear model we are fitting:
+
+$$
+y_{i} = \alpha + \beta_{\mbox{year}} \cdot \mathbb{I}_{\mbox{year}}(x)  + \epsilon_i, ~~~~ \epsilon_i \sim N(0, \sigma^2), ~~~~ i=1,\ldots,25224
+$$
+
+```{r}
+#| echo: false
+
+year_model <- lm(BMI ~ Year, data = data)
+```
+
+Prior to examining the regression results, we defined our null hypothesis (H0) as there being no significant change in the average BMI in Scotland from 2008 to 2012, and the alternative hypothesis (H1) as there being a significant change in average BMI during the same period.
+
+This model obtains the following regression table; @tbl-reg. Here we can see all the $\beta_{\mbox{year}}$ p values are greater than 0.05, our chosen significance level. This suggest all $\beta_{\mbox{year}}$ terms are not significant and we fail to reject the null hypothesis the average BMI in Scotland has not changed over the given years. Thus we should fit the null model with an intercept term only.
+
+```{r}
+#| echo: false
+#| label: tbl-reg
+#| tbl-cap: Estimates of the regression model coefficients.
+#| fig-width: 6
+#| fig-height: 2
+get_regression_table(year_model) |>
+  gt() |>
+  fmt_number(decimals=2) |>
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_column_labels())
+```
+
+### Differences in the BMI distribution by age, gender, socio-economic status or lifestyle factors. {#sec-fav}
+
+The next part of our statistical analysis will look at whether there any differences in the BMI distribution by age, gender, socio-economic status or lifestyle factors, this will be carried out using step wise regression with backward selection based on the Akaike information criterion (AIC). We will start with wil the full model include all predictor variables, namely, *AgeGroup, Sex, Employment and Lifestyle*. After performing backward selection on this model we see the results from the R output below. We can see if we remove *Sex* from the model the AIC will decrease whereas removing any other variable will only increase the AIC. Thus the stepwise regression output suggests the model without Sex is slightly better according to the AIC.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| results: hide
+
+full_model <- lm(BMI ~ AgeGroup+ Sex +
+                   Employment + Lifestyle, data = data)
+
+reduced_model <- stepAIC(full_model, direction = "backward")
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+# Create a data frame with your models and AIC values
+models_df <- data.frame(
+  Model = c("BMI ~ AgeGroup + Sex + Employment + Lifestyle",
+            "BMI ~ AgeGroup + Employment + Lifestyle"),
+  AIC = c(82516.48,82515.08)
+)
+```
+
+```{r}
+#| echo: false
+#| label: tbl-aic
+#| tbl-cap:  Model Comparisons using AIC
+#| fig-width: 6
+#| fig-height: 2
+library(gt)
+
+# Assuming models_df is already defined with the correct data
+
+# Use gt to format the table
+gt_table <- models_df |>
+  gt() |>
+  cols_label(
+    Model = "Model",
+    AIC = "AIC"
+  )
+
+gt_table
+```
+
+Therefore our final model with only significant variables and factors is:
+
+$$
+BMI = \alpha+\beta_{\mbox{AgeGroup}} \cdot \mathbb{I}_{\mbox{AgeGroup}}(x) + \beta_{\mbox{Sex}} \cdot \mathbb{I}_{\mbox{Sex}}(x) + \beta_{\mbox{Employment}} \cdot \mathbb{I}_{\mbox{Employment}}(x)
+$$
+
+```{r}
+#| echo: false
+#| label: tbl-7
+#| tbl-cap: Regression Coefficient plot of reduced model.
+#| fig-width: 6
+#| fig-height: 3
+library(ggplot2)
+library(broom)
+
+# Assuming 'reduced_model' is your final model after stepAIC
+tidy_reduced_model <- tidy(reduced_model)
+
+ggplot(tidy_reduced_model, aes(x = term, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error), width = 0.2) +
+  theme_minimal() +
+  labs( x = "Predictors", y = "Coefficient Estimate") +
+  coord_flip()  # Flips the axes to make it easier to read terms
+
+```
+
+@tbl-7 from our regression analysis visually represents the relationship between demographic, socioeconomic, and lifestyle factors and BMI. Each point on the plot corresponds to the estimated effect size of a predictor, with horizontal lines indicating the range of the standard error.
+
+The plot indicates BMI increases with age since the points corresponding to each age group beyond the base category (25-34) lie above zero and may have non-overlapping confidence intervals with the base category, suggesting a statistically significant higher BMI. Employment status also shows a clear pattern.The point estimate for full-time students is below zero with a confidence interval does not include zero, indicating a significantly lower BMI compared to the reference employment category. Conversely, those unable to work, denoted by a point above zero, are associated with a significantly higher BMI. Lifestyle factors exhibit a notable trend where individuals who consume only fruit or no fruits and vegetables at all have their point estimates above zero. However, the size of these effects is relatively small, and the associated confidence intervals are narrow, suggesting a modest but significant increase in BMI compared to those with a balanced intake of fruits and vegetables.
+
+Overall, the coefficient plot complements our findings by offering a clear visual summary of the factors contributing to variations in BMI. This reinforces the complexity of the issue and the need for comprehensive strategies in public health policies targeting obesity\
+\
+
+### Assumption Checking
+
+```{r}
+#| echo: false
+#| fig-cap: "Residuals against fitted values (left) with jitter added to reduce overlap, and histogram of residuals (right)"
+#| label: fig-asmp
+#| fig-width: 6
+#| fig-height: 2
+
+reg_points2 <- get_regression_points(reduced_model)
+
+# Add geom_jitter to the ggplot for residuals vs. fitted values
+p3 <- ggplot(reg_points2, aes(x = BMI_hat, y = residual)) +
+  geom_jitter(width = 0.4, height = 0, alpha = 0.5) + # Adjust 'width' as needed, 'alpha' controls point transparency
+  geom_hline(yintercept = 0, col = "blue", linewidth = 1) +
+  labs(x = "Fitted Values", y = "Residuals")
+
+# Plot the histogram of residuals
+p4 <- ggplot(reg_points2, aes(x = residual)) +
+  geom_histogram(bins = 30, col = "white") +
+  labs(x = "Residuals")
+
+# Arrange the two plots side by side
+grid.arrange(p3, p4, ncol = 2)
+```
+
+The model fitted assumes the errors are independent and follow a normal distribution with mean zero and constant variance. The assumption of independence is assumed to already be met. The other assumptions will be assessed below using residuals against fitted values to assess the assumption of mean zero and constant variance as well as a qq-plot and histogram of residuals to asses the assumption of normally distributed residuals.
+
+We can see from the plot of residuals against fitted values in @fig-asmp there appears to be more points above the x axis than below, however since our dataset is very large we can relax the assumption of homoscedasticity. We can also see the histogram of residuals, which appears to be roughly bell shaped, however there does appear to be a slight right skew, but due to the central limit theorem and the size of our dataset we can assume the assumption of the normality of residuals is met.
+
+## Conclusions {#sec-con}
+
+Upon analyzing the Scottish Health Survey data for the period 2008-2012, it is concluded that the Body Mass Index (BMI) of the Scottish population has remained relatively stable. The analysis elucidates that gender does not significantly affect BMI variance, whereas age and employment status identified as influential factors. The data indicates that individuals aged 55-64 exhibit higher BMI averages, suggesting a correlation between BMI and middle age. Furthermore, employment status is a determinant of BMI, with retired individuals and those unable to work due to disability showing higher BMI values, contrasted by lower BMI observed among full-time students.
+
+According to our findings, future research should pursue from 2 directions. The first direction could be ***Age-Specific Public Health Strategies***. The evident influence of age on BMI necessitates a focused investigation into the mechanisms of age-related weight change. Subsequent studies should aim to develop age-specific health interventions that address the unique needs of each life stage.
+
+The second one is directed to **The Role of Employment in Health**. The disparity in BMI across different employment statuses warrants a thorough examination of the occupational factors affecting health. This research should aim to delineate the influence of occupational activities and transitions, such as retirement, on BMI, informing strategies for workplace health promotion.
+
+In future studies, it would be valuable to explore how specific interventions targeting diet and physical activity could affect BMI, especially in the at-risk groups identified, such as older adults and those not in the workforce. A follow-up study might also investigate the impact of socioeconomic changes over the past decade on BMI trends. The goal would be to provide concrete recommendations for public health policies and to better tailor health resources to the needs of the Scottish population.
